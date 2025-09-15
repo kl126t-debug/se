@@ -78,6 +78,9 @@
           console.error("❌ 测评失败", err);
           resultDiv.textContent = "测评失败：" + JSON.stringify(err);
         },
+        onStart () => {
+         console.log("📤 录音开始，正在处理...");
+        },
         onStop: () => {
           console.log("📤 录音结束，正在处理...");
         }
@@ -110,3 +113,4 @@
   </script>
 </body>
 </html>
+

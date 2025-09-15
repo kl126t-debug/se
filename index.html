@@ -65,14 +65,14 @@
 
       recorder.record({
         serverParams: {
-          coreType: "en.sent.pron",
+          coreType: "en.sent.score",
           refText: sentence,
           rank: 100,
           attachAudioUrl: 1
         },
         duration: 10000, // 最大录音时长（毫秒）
         onScore: result => {
-          console.log("✅ 测评原始 JSON：", result);
+         // console.log("✅ 测评原始 JSON：", result);
           resultDiv.textContent = formatResult(result);
         },
         onScoreError: err => {
@@ -100,7 +100,7 @@
 
     // 格式化测评结果
     function formatResult(result) {
-  if (!result || !result.result || !result.result.details) {
+  if (!result || !result.result || !result.result.details?.en?.words) {
     return "无有效结果";
   }
 
@@ -159,5 +159,4 @@
   </script>
 </body>
 </html>
-
 

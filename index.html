@@ -78,7 +78,7 @@
           console.error("❌ 测评失败", err);
           resultDiv.textContent = "测评失败：" + JSON.stringify(err);
         },
-        onStart () => {
+        onStart: () => {
          console.log("📤 录音开始，正在处理...");
         },
         onStop: () => {
@@ -113,4 +113,5 @@
   </script>
 </body>
 </html>
+
 

@@ -100,20 +100,21 @@
 
     // 格式化测评结果
     function formatResult(result) {
-  if (!result || !result.result) return "无有效结果";
+  if (!result || !result.result || !result.result.details?.en?.words) {
+    return "无有效结果";
+  }
 
-  const { overall, fluency, integrity, accuracy, words } = result.result;
+  const { overall, fluency, integrity, accuracy } = result.result;
+  const words = result.result.details;
 
-  // 总体评分展示
   let summary = `✅ 测评完成：
 总分：${overall}
 流利度：${fluency}
 完整度：${integrity}
 准确度：${accuracy}`;
 
-  // 构建单词表格
   let tableHTML = `
-    <table border="1" cellpadding="6" style="margin-top:10px; border-collapse: collapse;">
+    <table border="1" cellpadding="6" style="margin-top:10px; border-collapse: collapse; width:100%;">
       <thead>
         <tr style="background:#eee;">
           <th>序号</th>
@@ -121,12 +122,17 @@
           <th>得分</th>
           <th>发音状态</th>
           <th>纠正建议</th>
+          <th>音素详情</th>
         </tr>
       </thead>
       <tbody>
   `;
 
   words.forEach((word, index) => {
+    const phoneDetails = word.phones?.map(phone => {
+      return `${phone.phone}(${phone.score}, ${phone.dp_message})`;
+    }).join(", ") || "—";
+
     tableHTML += `
       <tr>
         <td>${index + 1}</td>
@@ -134,13 +140,13 @@
         <td>${word.score}</td>
         <td>${word.dp_message}</td>
         <td>${word.suggestion || "—"}</td>
+        <td>${phoneDetails}</td>
       </tr>
     `;
   });
 
   tableHTML += `</tbody></table>`;
 
-  // 更新页面内容
   document.getElementById("result").textContent = summary;
   document.getElementById("wordTableContainer").innerHTML = tableHTML;
 

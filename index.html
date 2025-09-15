@@ -35,7 +35,7 @@
       recorder = new Html5Recorder({
         appKey: "16551899080000a5",
         sigurl: "https://collection.91tszx.com/api/Contact/JSSDKsign",
-      //  userId: "gabby_user_001", // 可自定义用户标识
+        userId: "gabby_user_001", // 可自定义用户标识
         onInit: () => {
           console.log("✅ SDK 初始化成功");
           startBtn.disabled = false;
@@ -72,7 +72,7 @@
           rank: 100,
           attachAudioUrl: 1
         },
-        audioType: "mp3",
+        duration: 10000, // 最大录音时长（毫秒）
         onScore: result => {
          // console.log("✅ 测评原始 JSON：", result);
           resultDiv.textContent = formatResult(result);
@@ -82,11 +82,9 @@
           resultDiv.textContent = "测评失败：" + JSON.stringify(err);
         },
         onStart: () => {
-         
          console.log("📤 录音开始，正在处理...");
         },
         onStop: () => {
-          
           console.log("📤 录音结束，正在处理...");
         }
       });
@@ -158,3 +156,4 @@ words.forEach((word, index) => {
   </script>
 </body>
 </html>
+

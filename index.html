@@ -100,7 +100,7 @@
 
     // 格式化测评结果
     function formatResult(result) {
-  if (!result || !result.result || !result.result.details?.en?.words) {
+  if (!result || !result.result || !result.result.details) {
     return "无有效结果";
   }
 

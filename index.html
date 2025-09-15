@@ -18,6 +18,7 @@
   <button id="startBtn">开始录音</button>
   <button id="stopBtn" disabled>结束录音</button>
   <div id="result">测评结果将在此显示</div>
+  <div id="wordTableContainer"></div>
 
   <script>
     let recorder = null;
@@ -99,19 +100,57 @@
 
     // 格式化测评结果
     function formatResult(result) {
-      if (!result || !result.result) return "无有效结果";
-      const { overall, fluency, integrity, accuracy } = result.result;
-      return `✅ 测评完成：
+  if (!result || !result.result) return "无有效结果";
+
+  const { overall, fluency, integrity, accuracy, words } = result.result;
+
+  // 总体评分展示
+  let summary = `✅ 测评完成：
 总分：${overall}
 流利度：${fluency}
 完整度：${integrity}
 准确度：${accuracy}`;
-    }
+
+  // 构建单词表格
+  let tableHTML = `
+    <table border="1" cellpadding="6" style="margin-top:10px; border-collapse: collapse;">
+      <thead>
+        <tr style="background:#eee;">
+          <th>序号</th>
+          <th>单词</th>
+          <th>得分</th>
+          <th>发音状态</th>
+          <th>纠正建议</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  words.forEach((word, index) => {
+    tableHTML += `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${word.text}</td>
+        <td>${word.score}</td>
+        <td>${word.dp_message}</td>
+        <td>${word.suggestion || "—"}</td>
+      </tr>
+    `;
+  });
+
+  tableHTML += `</tbody></table>`;
+
+  // 更新页面内容
+  document.getElementById("result").textContent = summary;
+  document.getElementById("wordTableContainer").innerHTML = tableHTML;
+
+  return summary;
+}
+
 
     // 页面加载时初始化 SDK
     window.onload = initRecorder;
   </script>
 </body>
 </html>
-
 

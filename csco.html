@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>语音测评测试</title>
+  <script src="https://sdk.cloud.chivox.com/chivoxsdk-js/v6.0/chivox.min.js"></script>
+</head>
+<body>
+  <h2>语音测评测试</h2>
+  <button onclick="startRecord()">开始测评</button>
+  <pre id="result"></pre>
+
+  <script>
+    let recorder;
+
+    function startRecord() {
+      recorder = new Html5Recorder({
+        appKey: "16551899080000a5",
+        sigurl: "https://collection.91tszx.com/api/Contact/JSSDKsign",
+        onInit: () => console.log("初始化成功"),
+        onError: err => console.error("初始化失败", err)
+      });
+
+      recorder.record({
+        serverParams: {
+          coreType: "en.word.pron",
+          refText: "apple",
+          rank: 100,
+          attachAudioUrl: 1
+        },
+        duration: 3000,
+        onScore: result => {
+          document.getElementById("result").textContent = JSON.stringify(result, null, 2);
+        },
+        onScoreError: err => {
+          console.error("评测失败", err);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

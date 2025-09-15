@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>英文句子测评</title>
+  <script src="https://sdk.cloud.chivox.com/chivoxsdk-js/v6.0/chivox.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #recordBtn { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    #result { white-space: pre-wrap; background: #f0f0f0; padding: 10px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h2>英文句子测评</h2>
+  <input type="text" id="sentenceInput" placeholder="请输入英文句子" style="width: 100%; padding: 8px;" />
+  <br><br>
+  <button id="recordBtn">按住开始录音</button>
+  <div id="result">测评结果将在此显示</div>
+
+  <script>
+    let recorder;
+    let isRecording = false;
+
+    const recordBtn = document.getElementById('recordBtn');
+    const resultDiv = document.getElementById('result');
+
+    // 初始化评测引擎
+    function initRecorder() {
+      recorder = new Html5Recorder({
+        appKey: "16551899080000a5",
+        sigurl: "https://collection.91tszx.com/api/Contact/JSSDKsign",
+        onInit: () => console.log("初始化成功"),
+        onError: err => console.error("初始化失败", err)
+      });
+    }
+
+    // 开始录音
+    function startRecording() {
+      const sentence = document.getElementById('sentenceInput').value.trim();
+      if (!sentence) {
+        alert("请输入英文句子");
+        return;
+      }
+
+      if (!recorder) {
+        alert("录音引擎未初始化");
+        return;
+      }
+
+      isRecording = true;
+      recorder.record({
+        serverParams: {
+          coreType: "en.sent.pron",
+          refText: sentence,
+          rank: 100,
+          attachAudioUrl: 1
+        },
+        duration: 10000, // 最长录音时间（毫秒）
+        onScore: result => {
+          console.log("测评原始 JSON 数据：", result); 
+          resultDiv.textContent = formatResult(result);
+        },
+        
+        onScoreError: err => {
+          resultDiv.textContent = "测评失败：" + JSON.stringify(err);
+        },
+        onStop: () => {
+          console.log("录音结束");
+        }
+      });
+    }
+
+    // 停止录音并释放资源
+    function stopRecording() {
+      if (isRecording && recorder) {
+        recorder.stop();
+        isRecording = false;
+      }
+    }
+
+    // 格式化测评结果
+    function formatResult(result) {
+      if (!result || !result.result) return "无有效结果";
+      const score = result.result.overall || 0;
+      const fluency = result.result.fluency || 0;
+      const integrity = result.result.integrity || 0;
+      const accuracy = result.result.accuracy || 0;
+
+      return `✅ 测评完成：
+总分：${score}
+流利度：${fluency}
+完整度：${integrity}
+准确度：${accuracy}`;
+    }
+
+    // 按住按钮开始录音，松开结束
+    recordBtn.addEventListener('mousedown', startRecording);
+    recordBtn.addEventListener('mouseup', stopRecording);
+    recordBtn.addEventListener('touchstart', startRecording); // 移动设备支持
+    recordBtn.addEventListener('touchend', stopRecording);
+
+    // 初始化
+    window.onload = initRecorder;
+  </script>
+</body>
+</html>

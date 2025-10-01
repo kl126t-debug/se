@@ -1,749 +1,101 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英语朗读评分</title>
+    <title>先声智能句子评测Demo</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .status-panel {
-            margin-bottom: 20px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-        }
-
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 5px;
-        }
-
-        .status-connected {
-            background-color: #28a745;
-        }
-
-        .status-disconnected {
-            background-color: #dc3545;
-        }
-
-        .reading-text {
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            font-size: 18px;
-            line-height: 1.6;
-        }
-
-        .control-panel {
-            margin: 20px 0;
-            text-align: center;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            margin: 0 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-
-        .btn-primary {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-danger {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background-color: #c82333;
-        }
-
-        .btn:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-        }
-
-        .recording-status {
-            display: none;
-            margin: 10px 0;
-            color: #dc3545;
-            font-weight: bold;
-        }
-
-        .score-panel {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-        }
-
-        .score-item {
-            margin: 10px 0;
-        }
-
-        .score-label {
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        .score-value {
-            color: #007bff;
-            font-size: 18px;
-        }
-
-        .error-details {
-            margin-top: 15px;
-            padding: 10px;
-            background-color: #fff3cd;
-            border-radius: 4px;
-        }
-
-        .error-item {
-            margin: 5px 0;
-            color: #856404;
-        }
+        body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; padding: 0; }
+        .container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #ddd; padding: 32px; }
+        h2 { text-align: center; margin-bottom: 24px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 24px; background: #1976d2; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:disabled { background: #aaa; }
+        .result { margin-top: 24px; background: #f0f4fa; border-radius: 6px; padding: 16px; }
+        .error { color: #d32f2f; margin-top: 16px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="status-panel">
-            <div id="engineStatus">
-                <span class="status-indicator"></span>
-                <span>引擎状态：未连接</span>
-            </div>
-            <button id="verifyAuth" class="btn btn-primary">初始化引擎</button>
-        </div>
+<div class="container">
+    <h2>句子评测 Demo</h2>
+    <label for="sentence">请输入要评测的英文句子：</label>
+    <input type="text" id="sentence" value="This is a test sentence." />
+    <button id="recordBtn">开始录音并评测</button>
+    <div class="result" id="result" style="display:none;"></div>
+    <div class="error" id="error" style="display:none;"></div>
+</div>
+<script src="md5.js"></script>
+<script>
+    async function loadMD5() {
+        return window.hexMD5;
+    }
 
-        <div class="reading-text" id="readingText">
-            The quick brown fox jumps over the lazy dog.
-        </div>
+    async function generateWeChatSign(params) {
+        const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
+            acc[key] = params[key];
+            return acc;
+        }, {});
+        const paramStr = Object.entries(sortedParams)
+            .map(([key, value]) => `${key}=${value}`)
+            .join('&');
+        const hexMD5 = await loadMD5();
+        return hexMD5(paramStr);
+    }
 
-        <div class="control-panel">
-            <button id="startRecord" class="btn btn-primary">开始录音</button>
-            <button id="stopRecord" class="btn btn-danger" disabled>停止录音</button>
-            <div id="recordingStatus" class="recording-status">录音中...</div>
-        </div>
-
-        <div class="score-panel">
-            <div class="score-item">
-                <span class="score-label">总分：</span>
-                <span id="totalScore" class="score-value">0</span>
-            </div>
-            <div class="score-item">
-                <span class="score-label">准确度：</span>
-                <span id="accuracy" class="score-value">0</span>
-            </div>
-            <div class="score-item">
-                <span class="score-label">完整度：</span>
-                <span id="integrity" class="score-value">0</span>
-            </div>
-            <div class="score-item">
-                <span class="score-label">流利度：</span>
-                <span id="fluency" class="score-value">0</span>
-            </div>
-
-            <div class="error-details">
-                <div class="error-item">
-                    <span class="score-label">漏读词：</span>
-                    <span id="missedWords">无</span>
-                </div>
-                <div class="error-item">
-                    <span class="score-label">重复词：</span>
-                    <span id="repeatedWords">无</span>
-                </div>
-                <div class="error-item">
-                    <span class="score-label">错误词：</span>
-                    <span id="wrongWords">无</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="md5.js"></script>
-    <script>
-        class AudioRecorder {
-            constructor(scoringEngine) {
-                this.scoringEngine = scoringEngine;
-                this.mediaRecorder = null;
-                this.audioContext = null;
-                this.audioChunks = [];
-                this.isRecording = false;
-                this.startButton = document.getElementById('startRecord');
-                this.stopButton = document.getElementById('stopRecord');
-                this.recordingStatus = document.getElementById('recordingStatus');
-        
-                this.startButton.addEventListener('click', () => this.startRecording());
-                this.stopButton.addEventListener('click', () => this.stopRecording());
-            }
-        
-            async startRecording() {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            channelCount: 1,
-                            sampleRate: 16000,
-                            sampleSize: 16
-                        }
-                    });
-        
-                    this.audioContext = new AudioContext({ sampleRate: 16000 });
-                    const source = this.audioContext.createMediaStreamSource(stream);
-                    const processor = this.audioContext.createScriptProcessor(4096, 1, 1);
-        
-                    this.audioChunks = [];
-                    this.isRecording = true;
-        
-                    processor.onaudioprocess = (e) => {
-                        if (!this.isRecording) return;
-                        const inputData = e.inputBuffer.getChannelData(0);
-                        const audioData = new Int16Array(inputData.length);
-                        for (let i = 0; i < inputData.length; i++) {
-                            audioData[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
-                        }
-                        this.audioChunks.push(audioData);
-                    };
-        
-                    source.connect(processor);
-                    processor.connect(this.audioContext.destination);
-        
-                    this.startButton.disabled = true;
-                    this.stopButton.disabled = false;
-                    this.recordingStatus.style.display = 'block';
-                    this.recordingStatus.textContent = '录音中...';
-        
-                } catch (error) {
-                    console.error('开始录音失败:', error);
-                    alert('无法访问麦克风，请确保已授权访问。');
-                }
-            }
-        
-            async stopRecording() {
-                if (!this.isRecording) return;
-        
-                this.isRecording = false;
-                this.startButton.disabled = false;
-                this.stopButton.disabled = true;
-                this.recordingStatus.style.display = 'none';
-        
-                // 合并音频数据
-                const totalLength = this.audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
-                const mergedData = new Int16Array(totalLength);
-                let offset = 0;
-                for (const chunk of this.audioChunks) {
-                    mergedData.set(chunk, offset);
-                    offset += chunk.length;
-                }
-        
-                // 创建WAV文件
-                const wavData = this.createWAVFile(mergedData);
-                
-                try {
-                    await this.scoringEngine.evaluateAudio(wavData);
-                } catch (error) {
-                    console.error('评估音频失败:', error);
-                    alert('评估音频时出错，请重试。');
-                }
-        
-                if (this.audioContext) {
-                    await this.audioContext.close();
-                    this.audioContext = null;
-                }
-            }
-        
-            createWAVFile(audioData) {
-                const buffer = new ArrayBuffer(44 + audioData.length * 2);
-                const view = new DataView(buffer);
-        
-                // WAV Header
-                const writeString = (view, offset, string) => {
-                    for (let i = 0; i < string.length; i++) {
-                        view.setUint8(offset + i, string.charCodeAt(i));
-                    }
-                };
-        
-                writeString(view, 0, 'RIFF');  // ChunkID
-                view.setUint32(4, 36 + audioData.length * 2, true);  // ChunkSize
-                writeString(view, 8, 'WAVE');  // Format
-                writeString(view, 12, 'fmt ');  // Subchunk1ID
-                view.setUint32(16, 16, true);  // Subchunk1Size
-                view.setUint16(20, 1, true);  // AudioFormat (PCM)
-                view.setUint16(22, 1, true);  // NumChannels
-                view.setUint32(24, 16000, true);  // SampleRate
-                view.setUint32(28, 16000 * 2, true);  // ByteRate
-                view.setUint16(32, 2, true);  // BlockAlign
-                view.setUint16(34, 16, true);  // BitsPerSample
-                writeString(view, 36, 'data');  // Subchunk2ID
-                view.setUint32(40, audioData.length * 2, true);  // Subchunk2Size
-        
-                // Audio Data
-                const offset = 44;
-                for (let i = 0; i < audioData.length; i++) {
-                    view.setInt16(offset + i * 2, audioData[i], true);
-                }
-        
-                return buffer;
-            }
+    document.getElementById('recordBtn').onclick = async function() {
+        const sentence = document.getElementById('sentence').value.trim();
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+        resultDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+        if (!sentence) {
+            errorDiv.textContent = '请输入句子';
+            errorDiv.style.display = 'block';
+            return;
         }
-
-        class ScoringEngine {
-            constructor() {
-                this.applicationId = 'a148';
-                this.clientType = 'test-mini-bsg-normol';
-                this.userId = 'test-user';
-                this.wsConnection = null;
-                this.isInitialized = false;
-                this.authInfo = null;
-                this.endpoints = null;
-                this.evalParams = null;
-                this.statusIndicator = document.getElementById('statusIndicator');
-                this.engineStatus = document.getElementById('engineStatus');
-                this.audioRecorder = null;
-        
-                // 绑定验证按钮事件
-                const verifyAuthButton = document.getElementById('verifyAuth');
-                verifyAuthButton.addEventListener('click', () => this.verifyAuth());
-        
-                // 设置评估参数
-                this.evalParams = {
-                    coreType: 'sent.eval',
-                    refText: document.getElementById('readingText').textContent.trim()
-                };
-            }
-        
-            init() {
-                // 初始化 AudioRecorder
-                this.audioRecorder = new AudioRecorder(this);
-                
-                // 更新初始状态
-                this.updateEngineStatus('未验证');
-                document.getElementById('stopRecord').disabled = true;
-            }
-        
-            setupAuthHandlers() {
-                const verifyButton = document.getElementById('verifyAuth');
-                verifyButton.addEventListener('click', () => this.verifyAuth());
-            }
-
-            async loadMD5() {
-                return new Promise((resolve, reject) => {
-                    if (typeof window.hexMD5 === 'function') {
-                        resolve({ hexMD5: window.hexMD5 });
-                        return;
-                    }
-            
-                    const script = document.createElement('script');
-                    script.src = '/md5.js';
-                    script.onload = () => {
-                        if (typeof window.hexMD5 === 'function') {
-                            resolve({ hexMD5: window.hexMD5 });
-                        } else {
-                            reject(new Error('MD5 library failed to load'));
-                        }
-                    };
-                    script.onerror = () => reject(new Error('Failed to load MD5 script'));
-                    document.head.appendChild(script);
-                });
-            }
-
-            async generateWeChatSign(params) {
-                // 按照参数名称的字母顺序对参数进行排序
-                const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
-                    acc[key] = params[key];
-                    return acc;
-                }, {});
-            
-                // 将参数拼接成字符串
-                const paramStr = Object.entries(sortedParams)
-                    .map(([key, value]) => `${key}=${value}`)
-                    .join('&');
-            
-                // 使用 MD5 生成签名
-                const md5 = await this.loadMD5();
-                return md5.hexMD5(paramStr);
-            }
-
-            async fetchEndpoints() {
-                try {
-                    const params = {
-                        application_id: this.applicationId,
-                        client_type: this.clientType,
-                        timestamp: Math.floor(Date.now() / 1000)
-                    };
-                    const request_sign = this.generateWeChatSign(params);
-                    
-                    const url = `https://gate-01.api.cloud.ssapi.cn/entry_param_config?application_id=${this.applicationId}&client_type=${this.clientType}`;
-                    
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'X-WECHAT-HOSTSIGN': JSON.stringify({
-                                ...params,
-                                request_sign
-                            }),
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090c39)XWEB/14185',
-                            'Referer': 'https://servicewechat.com/wx7279a29ef86a3002/35/page-frame.html',
-                            'Accept': '*/*',
-                            'Sec-Fetch-Site': 'cross-site',
-                            'Sec-Fetch-Mode': 'cors',
-                            'Sec-Fetch-Dest': 'empty',
-                            'Accept-Language': 'zh-CN,zh;q=0.9',
-                            'Accept-Encoding': 'gzip, deflate, br'
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
-                    const data = await response.json();
-                    if (data.code !== 0) {
-                        throw new Error(data.message || '获取服务端点配置失败');
-                    }
-                    
-                    this.endpoints = data.data;
-                    console.log('服务端点配置获取成功:', this.endpoints);
-                    return this.endpoints;
-                } catch (error) {
-                    console.error('获取服务端点配置失败:', error);
-                    throw error;
-                }
-            }
-
-            async healthyCheck() {
-                try {
-                    const params = {
-                        application_id: this.applicationId,
-                        client_type: this.clientType,
-                        timestamp: Math.floor(Date.now() / 1000)
-                    };
-                    const request_sign = this.generateWeChatSign(params);
-                    
-                    const url = `https://gate-01.api.cloud.ssapi.cn/healthy_check?application_id=${this.applicationId}&client_type=${this.clientType}`;
-                    
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'X-WECHAT-HOSTSIGN': JSON.stringify({
-                                ...params,
-                                request_sign
-                            }),
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090c39)XWEB/14185',
-                            'Referer': 'https://servicewechat.com/wx7279a29ef86a3002/35/page-frame.html',
-                            'Accept': '*/*',
-                            'Sec-Fetch-Site': 'cross-site',
-                            'Sec-Fetch-Mode': 'cors',
-                            'Sec-Fetch-Dest': 'empty',
-                            'Accept-Language': 'zh-CN,zh;q=0.9',
-                            'Accept-Encoding': 'gzip, deflate, br'
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`健康检查失败! status: ${response.status}`);
-                    }
-                    
-                    const result = await response.text();
-                    console.log('健康检查结果:', result);
-                    return result === 'OK';
-                } catch (error) {
-                    console.error('健康检查失败:', error);
-                    throw error;
-                }
-            }
-
-            async setupWebSocket() {
-                if (!this.endpoints || !this.endpoints.length) {
-                    console.error('未获取到WebSocket端点');
-                    return;
-                }
-            
-                const wsEndpoint = this.endpoints[0];
-                const timestamp = Date.now().toString();
-            
-                try {
-                    this.wsConnection = new WebSocket(wsEndpoint);
-            
-                    this.wsConnection.onopen = () => {
-                        console.log('WebSocket已连接');
-                        
-                        // 发送connect命令
-                        const connectMessage = {
-                            command: 'connect',
-                            applicationId: this.applicationId,
-                            userId: this.userId,
-                            warrantId: this.authInfo.warrantId,
-                            timestamp: timestamp,
-                            sig: 'default_sig'  // 使用默认签名
-                        };
-                        
-                        this.wsConnection.send(JSON.stringify(connectMessage));
-                    };
-            
-                    this.wsConnection.onmessage = (event) => {
-                        try {
-                            const response = JSON.parse(event.data);
-                            
-                            if (response.command === 'connect') {
-                                if (response.code === 0) {
-                                    console.log('WebSocket连接认证成功');
-                                    this.isInitialized = true;
-                                    this.updateEngineStatus('已连接');
-                                } else {
-                                    console.error('WebSocket连接认证失败:', response.message);
-                                    this.updateEngineStatus('连接失败');
-                                }
-                            } else if (response.command === 'result') {
-                                this.handleEvaluationResult(event.data);
-                            }
-                        } catch (error) {
-                            console.error('处理WebSocket消息失败:', error);
-                        }
-                    };
-            
-                    this.wsConnection.onerror = (error) => {
-                        console.error('WebSocket错误:', error);
-                        this.updateEngineStatus('连接错误');
-                    };
-            
-                    this.wsConnection.onclose = () => {
-                        console.log('WebSocket已关闭');
-                        this.isInitialized = false;
-                        this.updateEngineStatus('未连接');
-                        this.reconnectIfNeeded();
-                    };
-            
-                } catch (error) {
-                    console.error('建立WebSocket连接失败:', error);
-                    this.updateEngineStatus('连接失败');
-                }
-            }
-            
-            reconnectIfNeeded() {
-                if (!this.isInitialized) {
-                    console.log('尝试重新连接WebSocket...');
-                    setTimeout(() => this.setupWebSocket(), 5000);
-                }
-            }
-
-            async verifyAuth() {
-                try {
-                    await this.loadMD5();
-                    const warrantId = await this.getWarrantId();
-                    if (!warrantId) {
-                        this.showAuthError('获取授权ID失败');
-                        return;
-                    }
-            
-                    this.authInfo = { warrantId };
-                    await this.fetchEndpoints();
-                    await this.setupWebSocket();
-            
-                } catch (error) {
-                    console.error('认证失败:', error);
-                    this.showAuthError(error.message);
-                }
-            }
-            
-            async getWarrantId() {
-                const timestamp = Math.floor(Date.now() / 1000).toString();
-                const params = {
-                    application_id: this.applicationId,
-                    client_type: this.clientType,
-                    timestamp: timestamp
-                };
-            
-                const request_sign = await this.generateWeChatSign(params);
-                const url = 'https://v3.aes.ssapi.cn/api/v3/authorize';
-            
-                try {
-                    const formData = new URLSearchParams();
-                    for (const [key, value] of Object.entries(params)) {
-                        formData.append(key, value);
-                    }
-            
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-WECHAT-HOSTSIGN': request_sign,
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090c39)XWEB/14185',
-                            'Referer': 'https://servicewechat.com/wx7279a29ef86a3002/35/page-frame.html',
-                            'Accept': '*/*',
-                            'Sec-Fetch-Site': 'cross-site',
-                            'Sec-Fetch-Mode': 'cors',
-                            'Sec-Fetch-Dest': 'empty',
-                            'Accept-Language': 'zh-CN,zh;q=0.9'
-                        }
-                    });
-            
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-            
-                    const result = await response.json();
-                    if (result.code !== 0) {
-                        throw new Error(result.message || '获取授权失败');
-                    }
-            
-                    return result.data.warrant_id;
-            
-                } catch (error) {
-                    console.error('获取授权ID失败:', error);
-                    throw error;
-                }
-            }
-            
-            async fetchEndpoints() {
-                const timestamp = Math.floor(Date.now() / 1000).toString();
-                const params = {
-                    application_id: this.applicationId,
-                    client_type: this.clientType,
-                    timestamp: timestamp
-                };
-            
-                const request_sign = await this.generateWeChatSign(params);
-                const url = 'https://gate-01.api.cloud.ssapi.cn/endpoints';
-            
-                try {
-                    const queryString = new URLSearchParams(params).toString();
-                    const response = await fetch(`${url}?${queryString}`, {
-                        method: 'GET',
-                        headers: {
-                            'X-WECHAT-HOSTSIGN': request_sign,
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF WindowsWechat(0x63090c39)XWEB/14185',
-                            'Referer': 'https://servicewechat.com/wx7279a29ef86a3002/35/page-frame.html',
-                            'Accept': '*/*',
-                            'Sec-Fetch-Site': 'cross-site',
-                            'Sec-Fetch-Mode': 'cors',
-                            'Sec-Fetch-Dest': 'empty',
-                            'Accept-Language': 'zh-CN,zh;q=0.9'
-                        }
-                    });
-            
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-            
-                    const result = await response.json();
-                    if (result.code !== 0) {
-                        throw new Error(result.message || '获取服务端点失败');
-                    }
-            
-                    this.endpoints = result.data;
-                    console.log('服务端点配置获取成功:', this.endpoints);
-                    return this.endpoints;
-            
-                } catch (error) {
-                    console.error('获取服务端点失败:', error);
-                    throw error;
-                }
-            }
-            
-            showAuthError(message) {
-                this.updateEngineStatus(`认证失败: ${message}`);
-                document.getElementById('verifyAuth').disabled = false;
-            }
-            
-            updateEngineStatus(status) {
-                const statusElement = document.getElementById('engineStatus');
-                const indicator = statusElement.querySelector('.status-indicator');
-                
-                // 更新状态文本
-                statusElement.querySelector('span:last-child').textContent = `引擎状态：${status}`;
-                
-                // 更新状态指示器样式
-                indicator.className = 'status-indicator ' + 
-                    (status === '已连接' ? 'status-connected' : 'status-disconnected');
-            }
-            
-                init() {
-                    // 初始化UI元素引用
-                    this.statusIndicator = document.getElementById('statusIndicator');
-                    this.engineStatus = document.getElementById('engineStatus');
-                
-                    // 绑定按钮事件
-                    document.getElementById('verifyAuth').addEventListener('click', () => {
-                        this.verifyAuth();
-                    });
-                
-                    // 初始化评分参数
-                    this.evalParams = {
-                        coreType: 'sent.eval',
-                        refText: document.getElementById('readingText').textContent.trim()
-                    };
-                
-                    // 初始化录音控制
-                    this.audioRecorder = new AudioRecorder(this);
-                }
-                
-                    async processAudio(audioBlob) {
-                        try {
-                            this.recordingStatus.textContent = '正在评分...';
-                            this.recordingStatus.style.display = 'block';
-                            
-                            await this.scoringEngine.evaluateAudio(audioBlob);
-                            
-                            this.recordingStatus.style.display = 'none';
-                        } catch (error) {
-                            console.error('音频处理失败:', error);
-                            this.handleRecordingError(error);
-                        }
-                    }
-                
-                    handleRecordingError(error) {
-                        let errorMessage = '录音失败';
-                        if (error.name === 'NotFoundError') {
-                            errorMessage = '未找到麦克风设备，请确保设备已正确连接。';
-                        } else if (error.name === 'NotAllowedError') {
-                            errorMessage = '未获得麦克风使用权限，请允许浏览器使用麦克风。';
-                        } else if (error.name === 'NotSupportedError') {
-                            errorMessage = '您的浏览器不支持录音功能，请使用最新版本的Chrome或Firefox浏览器。';
-                        }
-                        
-                        alert(errorMessage);
-                        
-                        // 重置UI状态
-                        this.startButton.style.display = 'block';
-                        this.stopButton.style.display = 'none';
-                        this.recordingStatus.style.display = 'none';
-                    }
-                }
-
-            // Initialize when the page loads
-            window.addEventListener('load', () => {
-                const scoringEngine = new ScoringEngine();
-                scoringEngine.init();
+        this.disabled = true;
+        try {
+            // 构造参数
+            const params = {
+                applicationId: "a148",
+                userId: "happy_01",
+                timestamp: Date.now().toString(),
+                coreType: "en.sent.score",
+                refText: sentence
+            };
+            params.sig = await generateWeChatSign(params);
+            // 初始化引擎
+            const engine = new EngineEvaluat({
+                ...params,
+                coreTimeout: 10000,
+                engineLinksAddress: ["gate-01.api.cloud.ssapi.cn", "gate-02.api.cloud.ssapi.cn"]
             });
-        </script>
-    </body>
+            engine.onEvaluateResult = function(result) {
+                resultDiv.innerHTML = `<b>分数：</b> ${result.score}<br><b>详细评分：</b> <pre>${JSON.stringify(result.details, null, 2)}</pre>`;
+                resultDiv.style.display = 'block';
+                errorDiv.style.display = 'none';
+                document.getElementById('recordBtn').disabled = false;
+            };
+            engine.onError = function(error) {
+                errorDiv.textContent = '评测错误：' + error;
+                errorDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+                document.getElementById('recordBtn').disabled = false;
+            };
+            // 调用SDK的录音功能
+            engine.startRecord({
+                coreType: "en.sent.score",
+                refText: sentence,
+                attachAudioUrl: true,
+                evalTime: 3
+            });
+        } catch (e) {
+            errorDiv.textContent = '初始化或签名失败：' + e;
+            errorDiv.style.display = 'block';
+            document.getElementById('recordBtn').disabled = false;
+        }
+    };
+</script>
+<script src="engine.js"></script>
+</body>
 </html>

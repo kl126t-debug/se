@@ -86,8 +86,7 @@
             engine.startRecord({
                 coreType: "en.sent.score",
                 refText: sentence,
-                attachAudioUrl: true,
-                evalTime: 3
+                evalTime: 3000
             });
         } catch (e) {
             errorDiv.textContent = '初始化或签名失败：' + e;
